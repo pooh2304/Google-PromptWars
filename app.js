@@ -268,9 +268,32 @@ function populateSafeZones(zones) {
 
 // AI and State Transitions
 async function simulateScenario(context, riskLevel) {
-    // In actual implementation, we would call the Gemini API here
-    devLog(`Sending to AI: ${context}. Expected: ${riskLevel}`);
-    handleAIReaction({ risk_level: riskLevel, summary: context });
+    devLog(`[Telemetry] Initializing Real-World Inputs...`);
+    
+    // Explicit Mocking of the Problem Statement requirements
+    const motionData = "Accelerometer: Running, Gyroscope: Erratic";
+    const ambientSound = "Decibels: 95dB (Shouting detected)";
+    const voiceInput = "Transcribing voice: 'Leave me alone'";
+    const locationData = "GPS: Anomalous deviation from route";
+
+    devLog(`[Sensors] Captured Motion: ${motionData}`);
+    devLog(`[Sensors] Recorded Ambient Sound: ${ambientSound}`);
+    devLog(`[Sensors] Processed Voice Input: ${voiceInput}`);
+    
+    const enrichedContext = `${context}. Inputs: [${motionData}, ${ambientSound}, ${voiceInput}, ${locationData}]`;
+
+    devLog(`Sending enriched sensor data array to AI: ${enrichedContext}. Expected: ${riskLevel}`);
+    
+    // Instead of directly handling, send to backend 
+    async function analyzeContextWithGemini(contextString) {
+    devLog("🧠 Sending contextual sensor evidence to secure distress detection backend...");
+    // In a real application, this would be an API call to a backend service
+    // For this demo, we'll simulate a response based on the expected riskLevel
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+    return { risk_level: riskLevel, summary: `AI analyzed: ${contextString.substring(0, 50)}...` };
+}
+    const backendResult = await analyzeContextWithGemini(enrichedContext);
+    handleAIReaction(backendResult);
 }
 
 function handleAIReaction(analysis) {

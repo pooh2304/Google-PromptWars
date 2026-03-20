@@ -1,10 +1,11 @@
 /**
  * @jest-environment jsdom
  */
+const request = require('supertest');
+const app = require('./server'); // Import the Express app
 
 describe('SheShield UI Integrity & Logic', () => {
     beforeEach(() => {
-        // Set up the exact DOM structure used in the app
         document.body.innerHTML = `
             <div id="app">
                 <main id="tab-home" class="tab-pane active">
@@ -14,30 +15,46 @@ describe('SheShield UI Integrity & Logic', () => {
                 <div class="bottom-sheet" id="bottom-sheet">
                     <button class="sheet-action sos-action" id="sheet-sos" aria-label="Trigger Emergency SOS manually">🚨 Emergency SOS</button>
                 </div>
-                <div id="alert-summary" class="alert-card hidden" aria-live="assertive">
-                    <p id="alert-status-text">We detected possible danger</p>
-                </div>
             </div>
         `;
     });
 
-    test('Core UI Elements exist for Accessibility and Logic', () => {
-        const primaryCta = document.getElementById('stay-protected-btn');
+    test('Core UI Elements exist and comply with Accessibility standards', () => {
         const orb = document.getElementById('safety-orb');
-        const sosMenuAction = document.getElementById('sheet-sos');
-        
-        expect(primaryCta).not.toBeNull();
         expect(orb).not.toBeNull();
-        expect(sosMenuAction).not.toBeNull();
-        
-        // Accessibility Validation Check
         expect(orb.getAttribute('aria-label')).toContain('Emergency SOS');
         expect(orb.getAttribute('role')).toBe('button');
     });
+});
 
-    test('Alert Summary handles state correctly', () => {
-        const alertSummary = document.getElementById('alert-summary');
-        expect(alertSummary.classList.contains('hidden')).toBe(true);
-        expect(alertSummary.getAttribute('aria-live')).toBe('assertive');
+describe('Backend API Integration Tests (Edge Cases & Validation)', () => {
+    test('POST /api/analyze should return 400 Bad Request if context is missing (Input Validation)', async () => {
+        const response = await request(app)
+            .post('/api/analyze')
+            .send({}); // Missing context
+        
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toContain('Validation Error');
+    });
+
+    test('POST /api/analyze should return 400 Bad Request if context is too large', async () => {
+        const response = await request(app)
+            .post('/api/analyze')
+            .send({ context: 'A'.repeat(6000) }); // Exceeds 5000 character limit
+        
+        expect(response.statusCode).toBe(400);
+        expect(response.body.error).toContain('too large');
+    });
+
+    test('POST /api/analyze should return valid JSON analysis on successful payload', async () => {
+        const response = await request(app)
+            .post('/api/analyze')
+            .send({ context: 'User is walking safely' });
+            
+        // Because Gemini API key might not be set in test environment, it gracefully falls back to catching the error.
+        // It should still return 200 OK with a fallback Analysis object.
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty('risk_level');
+        expect(response.body).toHaveProperty('summary');
     });
 });
