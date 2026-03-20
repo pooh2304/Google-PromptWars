@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://generativelanguage.googleapis.com https://*.basemaps.cartocdn.com; img-src 'self' data: https://unpkg.com https://*.basemaps.cartocdn.com;">
-    <title>SheShield - Real-Time Safety</title>
+    <!-- Keep CSP but formatted nicely -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://generativelanguage.googleapis.com https://maps.googleapis.com https://*.basemaps.cartocdn.com; img-src 'self' data: https://unpkg.com https://maps.gstatic.com https://maps.googleapis.com https://*.basemaps.cartocdn.com;">
+    <title>SheShield</title>
 
-    <!-- Google Maps API (Replaced Leaflet for Google Services integration) -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_MAPS_API_KEY&libraries=places" defer></script>
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCYrCH1e759kVq1awmvt4G4Lowt6YkbIwE&libraries=places" defer></script>
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
@@ -22,70 +22,184 @@
         <!-- Location Requirement Overlay -->
         <div id="location-overlay" class="overlay">
             <div class="overlay-content">
-                <h2>📍 Location Required</h2>
-                <p>SheShield needs your live location to function as a safety companion.</p>
-                <p style="font-size: 0.8rem; color: #ff3366;">Waiting for browser permission...</p>
+                <h2>Location Access</h2>
+                <p>SheShield uses your location to keep you safe.</p>
+                <div class="spinner"></div>
+                <p class="waiting-text">Waiting for permission...</p>
             </div>
         </div>
+
         <!-- Header -->
         <header>
-            <div class="logo">🛡️ SheShield</div>
-            <div class="status-indicator">
-                <span class="status-dot green"></span>
-                <span id="status-text">Monitoring Active</span>
+            <div class="header-content">
+                <div class="logo-container" id="logo-trigger">
+                    <span class="logo-icon">✨</span>
+                    <span class="logo">SheShield</span>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot green" id="header-status-dot"></span>
+                    <div class="status-texts">
+                        <span id="status-primary">Monitoring quietly</span>
+                        <span id="status-subtext">You're safe</span>
+                    </div>
+                </div>
             </div>
-            <!-- Silent mode toggle -->
-            <button id="silent-trigger-btn" class="icon-btn" title="Silent Trigger Mode" aria-label="Toggle Silent Trigger Mode">🤫</button>
         </header>
 
-        <!-- Main Dashboard -->
-        <main id="dashboard">
-            <div class="sos-container">
-                <button id="sos-btn" class="sos-button" aria-label="Trigger SOS distress signal">
-                    <span class="sos-text">SOS</span>
+        <!-- Main Content Area -->
+        <div class="main-content">
+            
+            <!-- Tab: Home -->
+            <main id="tab-home" class="tab-pane active">
+                <div class="orb-wrapper">
+                    <div class="safety-orb" id="safety-orb">
+                        <div class="orb-glow"></div>
+                        <div class="orb-core"></div>
+                    </div>
+                    <div class="orb-instruction">Press and hold for SOS</div>
+                </div>
+
+                <div class="cta-wrapper">
+                    <button id="stay-protected-btn" class="primary-cta">Stay Protected</button>
+                </div>
+            </main>
+
+            <!-- Tab: Map -->
+            <main id="tab-map" class="tab-pane">
+                <div class="safe-zones-header">
+                    <h3>Nearby Safe Places</h3>
+                </div>
+                <div class="safe-zones-list" id="safe-zones-list">
+                    <!-- Cards populated via JS -->
+                </div>
+                <div class="map-wrapper">
+                    <div id="map"></div>
+                </div>
+            </main>
+
+            <!-- Tab: Activity -->
+            <main id="tab-activity" class="tab-pane">
+                <div class="activity-header">
+                    <h3>Activity log</h3>
+                </div>
+                
+                <div class="empty-state" id="activity-empty-state">
+                    <p>Everything looks normal.</p>
+                </div>
+
+                <div id="alert-summary" class="alert-card hidden">
+                    <div class="alert-header">
+                        <div class="alert-icon" id="alert-icon">⚠️</div>
+                        <h4>Safety Update</h4>
+                    </div>
+                    <div class="alert-body">
+                        <p id="alert-status-text">We detected possible danger</p>
+                        <p class="alert-location" id="alert-location-text">Detecting location...</p>
+                        <p class="alert-action-taken" id="alert-action-text">Notified Emergency Contacts & Local Authorities</p>
+                    </div>
+                </div>
+                
+                <div id="audio-visualizer" class="visualizer-container hidden">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <span>Listening...</span>
+                </div>
+            </main>
+
+            <!-- Tab: Profile -->
+            <main id="tab-profile" class="tab-pane">
+                <div class="profile-header">
+                    <h3>Profile & Settings</h3>
+                </div>
+                <div class="settings-list">
+                    <div class="setting-card">
+                        <div class="setting-info">
+                            <span class="setting-title">Emergency Contacts</span>
+                            <span class="setting-desc">2 contacts added</span>
+                        </div>
+                        <span class="setting-chevron">›</span>
+                    </div>
+                    <div class="setting-card">
+                        <div class="setting-info">
+                            <span class="setting-title">Stealth Mode 🌙</span>
+                            <span class="setting-desc">Silent, discreet alerts</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="stealth-mode-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-card">
+                        <div class="setting-info">
+                            <span class="setting-title">Fake Call</span>
+                            <span class="setting-desc">Schedule a realistic phone call</span>
+                        </div>
+                        <span class="setting-chevron">›</span>
+                    </div>
+                    <div class="setting-card" id="test-alert-btn">
+                        <div class="setting-info">
+                            <span class="setting-title">Test Alert</span>
+                            <span class="setting-desc">Simulate an alert safely</span>
+                        </div>
+                        <span class="setting-chevron">›</span>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Bottom Sheet -->
+        <div class="bottom-sheet-backdrop" id="bottom-sheet-backdrop"></div>
+        <div class="bottom-sheet" id="bottom-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-content">
+                <button class="sheet-action sos-action" id="sheet-sos">
+                    <span class="action-icon">🚨</span> Emergency SOS
                 </button>
-                <p class="sos-hint">Hold to alert immediately</p>
+                <button class="sheet-action default-action" id="sheet-share">
+                    <span class="action-icon">📍</span> Share Live Location
+                </button>
+                <button class="sheet-action default-action" id="sheet-check">
+                    <span class="action-icon">👀</span> Check Surroundings
+                </button>
             </div>
+        </div>
 
-            <!-- Secret audio visualization (hidden unless triggered) -->
-            <div id="audio-visualizer" class="hidden">
-                <div class="bar"></div>
-                <div class="bar"></div>
-                <div class="bar"></div>
-                <span>Recording Evidentiary Audio...</span>
-            </div>
+        <!-- Bottom Navigation Bar -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-tab="tab-home">
+                <div class="nav-icon">🏠</div>
+                <span>Home</span>
+            </button>
+            <button class="nav-btn" data-tab="tab-map">
+                <div class="nav-icon">🗺️</div>
+                <span>Map</span>
+            </button>
+            <button class="nav-btn" data-tab="tab-activity">
+                <div class="nav-icon">🛡️</div>
+                <span>Activity</span>
+            </button>
+            <button class="nav-btn" data-tab="tab-profile">
+                <div class="nav-icon">👤</div>
+                <span>Profile</span>
+            </button>
+        </nav>
 
-            <div id="alert-summary" class="alert-card hidden">
-                <h3>🚨 Alert Summary</h3>
-                <p><strong>Status:</strong> <span id="alert-status-text">Danger Detected</span></p>
-                <p><strong>Location:</strong> <span id="alert-location-text">Detecting...</span></p>
-                <p><strong>Action Taken:</strong> Notified Emergency Contacts & Local Authorities</p>
-            </div>
-        </main>
-
-        <!-- Map View (Always accessible but takes over when alert active or expanding) -->
-        <section id="map-section">
-            <div class="map-header">
-                <h3>Nearby Safe Zones</h3>
-            </div>
-            <div id="map"></div>
-        </section>
-
-        <!-- Developer / Demo Panel -->
-        <div id="demo-panel">
+        <!-- Hidden Developer Panel (Shown by 5 taps on logo) -->
+        <div id="demo-panel" class="hidden-dev-panel">
             <div class="demo-header" id="demo-toggle">
-                🔧 Demo & API Settings <span>▲</span>
+                🔧 Developer Mode <span>▲</span>
             </div>
             <div class="demo-content" id="demo-content" style="display: none;">
                 <div class="input-group">
                     <label for="gemini-api-key">Gemini API Key</label>
-                    <input type="password" id="gemini-api-key" name="gemini-api-key" placeholder="Enter API Key" aria-required="true" value="">
+                    <input type="password" id="gemini-api-key" placeholder="Enter API Key" value="">
                 </div>
-                <h4>Simulate Scenarios</h4>
+                <h4 style="margin: 15px 0 5px; color: #333;">Simulations</h4>
                 <div class="sim-buttons">
-                    <button class="sim-btn" id="sim-safe">🚶‍♀️ Safe (Normal)</button>
-                    <button class="sim-btn" id="sim-suspicious">👣 Suspicious (Following)</button>
-                    <button class="sim-btn" id="sim-danger">⚠️ Danger (Shouting/Panic)</button>
+                    <button class="sim-btn safe-btn" id="sim-safe">Safe</button>
+                    <button class="sim-btn suspicious-btn" id="sim-suspicious">Suspicious</button>
+                    <button class="sim-btn danger-btn" id="sim-danger">Danger</button>
                 </div>
                 <div class="log-output" id="demo-logs"></div>
             </div>
@@ -95,5 +209,4 @@
     <!-- Custom JS -->
     <script src="app.js" defer></script>
 </body>
-
 </html>

@@ -1,26 +1,23 @@
-// SheShield - Core Application Logic
+// SheShield - Core Logic
 
-// ==========================================
-// STATE & CONFIG
-// ==========================================
 let state = {
-    apiKey: '',
-    isDangerous: false,
-    isRecording: false,
+    apiKey: 'AIzaSyCuLN2yfY_TG278tNisMzxQ-epBSNLUQKk',
+    riskLevel: 'low', // 'low', 'medium', 'high'
     userLocation: null,
-    silentMode: false
+    stealthMode: false,
+    logoTaps: 0,
+    logoTapTimeout: null
 };
 
-const ETHER_LOGS = [];
+const APP_LOGS = [];
 function devLog(msg) {
     console.log(msg);
     const logsEl = document.getElementById('demo-logs');
-    ETHER_LOGS.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
-    if (ETHER_LOGS.length > 20) ETHER_LOGS.shift();
-    if(logsEl) {
-        // Use textContent to prevent XSS warnings instead of innerHTML
+    APP_LOGS.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
+    if (APP_LOGS.length > 20) APP_LOGS.shift();
+    if(logsEl && logsEl.parentElement.style.display !== 'none') {
         logsEl.innerHTML = '';
-        ETHER_LOGS.forEach(log => {
+        APP_LOGS.forEach(log => {
             const p = document.createElement('div');
             p.textContent = log;
             logsEl.appendChild(p);
@@ -29,70 +26,174 @@ function devLog(msg) {
     }
 }
 
-// ==========================================
-// INITIALIZATION
-// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Demo panel toggle
+    initUI();
+    initMap();
+    initDevMode();
+});
+
+function initUI() {
+    // Bottom Navigation Logic
+    const navBtns = document.querySelectorAll('.nav-btn');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+
+    navBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            navBtns.forEach(b => b.classList.remove('active'));
+            tabPanes.forEach(p => p.classList.remove('active'));
+            
+            btn.classList.add('active');
+            const targetId = btn.getAttribute('data-tab');
+            document.getElementById(targetId).classList.add('active');
+
+            if(targetId === 'tab-map' && map) {
+                google.maps.event.trigger(map, "resize");
+                if (state.userLocation) map.panTo(state.userLocation);
+            }
+        });
+    });
+
+    // Bottom Sheet Logic
+    const stayProtectedBtn = document.getElementById('stay-protected-btn');
+    const bottomSheet = document.getElementById('bottom-sheet');
+    const bottomSheetBackdrop = document.getElementById('bottom-sheet-backdrop');
+
+    function openSheet() {
+        bottomSheet.classList.add('visible');
+        bottomSheetBackdrop.classList.add('visible');
+    }
+    function closeSheet() {
+        bottomSheet.classList.remove('visible');
+        bottomSheetBackdrop.classList.remove('visible');
+    }
+
+    stayProtectedBtn.addEventListener('click', openSheet);
+    bottomSheetBackdrop.addEventListener('click', closeSheet);
+    
+    // Bottom Sheet Actions
+    document.getElementById('sheet-sos').addEventListener('click', () => {
+        closeSheet();
+        activateSOS("User manually triggered emergency sequence via action menu.");
+    });
+    document.getElementById('sheet-share').addEventListener('click', () => {
+        closeSheet();
+        alert("Live location sharing link generated and sent to Emergency Contacts.");
+    });
+    document.getElementById('sheet-check').addEventListener('click', () => {
+        closeSheet();
+        alert("Recording 10s audio and taking wide-angle photo to check surroundings...");
+    });
+
+    // Stealth Mode Toggle
+    const stealthToggle = document.getElementById('stealth-mode-toggle');
+    stealthToggle.addEventListener('change', (e) => {
+        state.stealthMode = e.target.checked;
+        if(state.stealthMode) {
+            document.body.classList.add('stealth-mode');
+            devLog("🌙 Stealth mode enabled.");
+        } else {
+            document.body.classList.remove('stealth-mode');
+            devLog("☀️ Stealth mode disabled.");
+        }
+    });
+
+    // Test Alert
+    document.getElementById('test-alert-btn').addEventListener('click', () => {
+        simulateScenario("Test scenario: Suspicious activity.", "medium");
+        // switch to activity tab
+        document.querySelector('[data-tab="tab-activity"]').click();
+    });
+
+    // Orb Long Press Logic
+    const orb = document.getElementById('safety-orb');
+    let pressTimer;
+    
+    const startPress = () => {
+        if(state.riskLevel === 'high') return;
+        orb.classList.add('progressing');
+        if(navigator.vibrate) navigator.vibrate(50); // Haptic
+        pressTimer = setTimeout(() => {
+            if(navigator.vibrate) navigator.vibrate([100, 50, 100]); // Strong haptic
+            activateSOS("SOS triggered via 2-second orb hold.");
+            orb.classList.remove('progressing');
+        }, 2000);
+    };
+    
+    const cancelPress = () => {
+        orb.classList.remove('progressing');
+        clearTimeout(pressTimer);
+    };
+
+    orb.addEventListener('touchstart', (e) => { e.preventDefault(); startPress(); });
+    orb.addEventListener('touchend', cancelPress);
+    orb.addEventListener('mousedown', startPress);
+    orb.addEventListener('mouseup', cancelPress);
+    orb.addEventListener('mouseleave', cancelPress);
+}
+
+function initDevMode() {
+    // 5-tap logic
+    const logoTrigger = document.getElementById('logo-trigger');
+    logoTrigger.addEventListener('click', () => {
+        state.logoTaps++;
+        clearTimeout(state.logoTapTimeout);
+        
+        if (state.logoTaps >= 5) {
+            document.getElementById('demo-panel').classList.toggle('show');
+            state.logoTaps = 0;
+            if(navigator.vibrate) navigator.vibrate(100);
+        } else {
+            state.logoTapTimeout = setTimeout(() => {
+                state.logoTaps = 0;
+            }, 1000);
+        }
+    });
+
+    // Dev Panel Internal Toggles
     const toggle = document.getElementById('demo-toggle');
     const content = document.getElementById('demo-content');
     toggle.addEventListener('click', () => {
         const isHidden = content.style.display === 'none';
         content.style.display = isHidden ? 'block' : 'none';
         toggle.querySelector('span').innerText = isHidden ? '▼' : '▲';
+        if(!isHidden) devLog("Panel opened");
     });
 
-    // Inputs
-    state.apiKey = document.getElementById('gemini-api-key').value.trim();
-    document.getElementById('gemini-api-key').addEventListener('input', (e) => {
-        state.apiKey = e.target.value.trim();
-        devLog(state.apiKey ? "API Key Updated" : "API Key Cleared");
-    });
+    const apiKeyInput = document.getElementById('gemini-api-key');
+    apiKeyInput.addEventListener('input', (e) => state.apiKey = e.target.value.trim());
 
-    // Buttons
-    document.getElementById('sos-btn').addEventListener('click', triggerManualSOS);
-    document.getElementById('silent-trigger-btn').addEventListener('click', () => {
-        state.silentMode = !state.silentMode;
-        if(state.silentMode) devLog("🤫 Silent mode enabled. UI will hide alerts.");
-        else devLog("🔊 Silent mode disabled. Standard alerts active.");
-        alert(state.silentMode ? 'Silent Mode ON. Screen will look normal but SOS triggers in background.' : 'Silent Mode OFF.');
-    });
+    document.getElementById('sim-safe').addEventListener('click', () => handleAIReaction({ risk_level: "low", summary: "Safe" }));
+    document.getElementById('sim-suspicious').addEventListener('click', () => handleAIReaction({ risk_level: "medium", summary: "Following detected" }));
+    document.getElementById('sim-danger').addEventListener('click', () => handleAIReaction({ risk_level: "high", summary: "Help screamed" }));
+}
 
-    // Simulation Buttons
-    document.getElementById('sim-safe').addEventListener('click', () => simulateScenario("User is walking home, listening to music. No immediate threats detected.", "low"));
-    document.getElementById('sim-suspicious').addEventListener('click', () => simulateScenario("Footsteps detected behind the user. User says 'Stop following me!'. Heart rate slightly elevated based on voice.", "medium"));
-    document.getElementById('sim-danger').addEventListener('click', () => simulateScenario("Loud screaming, sounds of struggle. User shouted 'Help! Someone call the police!'. Phone indicates sudden drop/impact.", "high"));
-
-    // Init Map
-    initMap();
-});
-
-// ==========================================
-// MAP & GEOLOCATION
-// ==========================================
+// Map Logic
 let map, userMarker, safeZoneMarkers = [];
 
 function initMap() {
-    devLog("Initializing map...");
     const mapElement = document.getElementById('map');
     
-    // Default to New Delhi if not located yet, initialize Google Map
     if (typeof google === 'object' && typeof google.maps === 'object') {
         map = new google.maps.Map(mapElement, {
             center: { lat: 28.6139, lng: 77.2090 },
-            zoom: 13,
+            zoom: 14,
             disableDefaultUI: true,
             styles: [
-                { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
-                { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
-                { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] }
+                { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
+                { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+                { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+                { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f5f5' }] },
+                { featureType: 'administrative.land_parcel', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
+                { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
+                { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+                { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+                { featureType: 'road.arterial', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+                { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#dadada' }] },
+                { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] }
             ]
         });
-    } else {
-        devLog("⚠️ Google Maps API not loaded. Check network or API key.");
     }
 
-    // Get real location if possible
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -101,21 +202,12 @@ function initMap() {
                 updateUserLocation(pos.coords.latitude, pos.coords.longitude);
             },
             (err) => {
-                devLog("Geo error: " + err.message + " - Location rejected");
                 const overlay = document.getElementById('location-overlay');
                 if(overlay) {
-                    overlay.textContent = "❌ Location Denied. SheShield cannot function without location access.";
-                    overlay.style.backgroundColor = "white";
-                    overlay.style.color = "black";
-                    overlay.style.padding = "20px";
+                    overlay.innerHTML = "<div class='overlay-content'><h2>Location Required</h2><p>Please enable location services to use SheShield.</p></div>";
                 }
             }
         );
-    } else {
-        const overlay = document.getElementById('location-overlay');
-        if(overlay) {
-            overlay.textContent = "❌ No Geolocation support.";
-        }
     }
 }
 
@@ -125,17 +217,15 @@ function updateUserLocation(lat, lng) {
     
     if (map && typeof google === 'object') {
         map.panTo(currentLoc);
-        map.setZoom(15);
         
         if(!userMarker) {
             userMarker = new google.maps.Marker({
                 position: currentLoc,
                 map: map,
-                title: "Your Location",
                 icon: {
                     path: google.maps.SymbolPath.CIRCLE,
-                    scale: 8,
-                    fillColor: "#2979ff",
+                    scale: 7,
+                    fillColor: "#A3B18A",
                     fillOpacity: 1,
                     strokeColor: "white",
                     strokeWeight: 2
@@ -144,185 +234,136 @@ function updateUserLocation(lat, lng) {
         } else {
             userMarker.setPosition(currentLoc);
         }
-        generateSafeZones(lat, lng);
-    }
-    
-    document.getElementById('alert-location-text').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-}
 
-function generateSafeZones(lat, lng) {
-    // Clear old
-    safeZoneMarkers.forEach(m => {
-        if (m.setMap) m.setMap(null);
-    });
-    safeZoneMarkers = [];
-
-    if (!map || typeof google !== 'object') return;
-
-    // Create a few random offsets
-    const points = [
-        { lat: lat + 0.005, lng: lng + 0.005, title: 'Central Hospital: 🏥' },
-        { lat: lat - 0.003, lng: lng - 0.007, title: 'Police Precinct 42: 🚓' },
-        { lat: lat - 0.008, lng: lng + 0.002, title: '24/7 Pharmacy: 🏥' }
-    ];
-
-    points.forEach(p => {
-        let m = new google.maps.Marker({
-            position: { lat: p.lat, lng: p.lng },
-            map: map,
-            title: p.title
-        });
-        safeZoneMarkers.push(m);
-    });
-}
-
-// ==========================================
-// CORE AI DETECTION (GEMINI API)
-// ==========================================
-
-async function analyzeContextWithGemini(contextString) {
-    if (!state.apiKey) {
-        devLog("⚠️ API Key missing. Skipping real Gemini API call.");
-        // Mock fallback if no API key
-        return new Promise(resolve => {
-            setTimeout(() => {
-                let risk = "Low";
-                let action = "Continue monitoring";
-                if(contextString.includes("following")) { risk = "Medium"; action = "Stay alert, head to safe zone"; }
-                if(contextString.includes("Help") || contextString.includes("danger")) { risk = "High"; action = "Triggering SOS immediately"; }
-                resolve({
-                    risk_level: risk,
-                    confidence: 0.9,
-                    suggested_action: action,
-                    summary: "Mock analysis: " + risk + " risk detected."
-                });
-            }, 1000);
-        });
-    }
-
-    devLog("🧠 Sending inference to Gemini API...");
-    
-    // Construct Prompt
-    const prompt = `
-    You are the core AI of "SheShield", a personal safety app used by women.
-    Analyze the following messy context input (which could be a mix of voice transcripts, ambient sounds, and motion data).
-    Classify the distress risk level into EXACTLY ONE of: "Low", "Medium", "High".
-    Return the result strictly as a JSON object with the following keys:
-    - "risk_level" (string: "Low", "Medium", "High")
-    - "confidence" (number between 0 and 1)
-    - "suggested_action" (string, short actionable advice)
-    - "summary" (string, a 1-sentence explanation of why)
-
-    Context Input: "${contextString}"
-    `;
-
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.1,
-                    responseMimeType: "application/json"
-                }
-            })
-        });
-
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        // Mock safe zones based on location
+        populateSafeZones([
+            { name: "City General Hospital", km: "0.4 km", icon: "🏥" },
+            { name: "Central Police Station", km: "0.8 km", icon: "🚓" },
+            { name: "Starbucks 24/7", km: "1.2 km", icon: "☕" }
+        ]);
         
-        const data = await response.json();
-        const textResponse = data.candidates[0].content.parts[0].text;
-        devLog("Gemini Raw JSON: " + textResponse);
-        return JSON.parse(textResponse);
-
-    } catch (e) {
-        devLog("❌ AI Call Failed: " + e.message);
-        return { risk_level: "Medium", confidence: 0, suggested_action: "API Failed - Relying on manual triggers", summary: "Error" };
+        document.getElementById('alert-location-text').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 }
 
+function populateSafeZones(zones) {
+    const container = document.getElementById('safe-zones-list');
+    container.innerHTML = '';
+    zones.forEach(z => {
+        const card = document.createElement('div');
+        card.className = 'safe-zone-card';
+        card.innerHTML = `
+            <div style="display:flex; align-items:center; gap: 12px;">
+                <div class="safe-zone-icon">${z.icon}</div>
+                <div class="safe-zone-info">
+                    <h4>${z.name}</h4>
+                    <p>${z.km} away</p>
+                </div>
+            </div>
+            <button class="safe-zone-btn">Navigate Safely</button>
+        `;
+        container.appendChild(card);
+    });
+}
 
-// ==========================================
-// ACTION TRIGGERS
-// ==========================================
-
-async function simulateScenario(context, expectedFallback) {
-    devLog(`--- Simulating Scenario: ${expectedFallback.toUpperCase()} ---`);
-    const result = await analyzeContextWithGemini(context);
-    devLog(`AI Output: Risk=${result.risk_level}, Conf=${result.confidence}`);
-    
-    handleAIReaction(result);
+// AI and State Transitions
+async function simulateScenario(context, riskLevel) {
+    // In actual implementation, we would call the Gemini API here
+    devLog(`Sending to AI: ${context}. Expected: ${riskLevel}`);
+    handleAIReaction({ risk_level: riskLevel, summary: context });
 }
 
 function handleAIReaction(analysis) {
     const risk = analysis.risk_level.toLowerCase();
     
-    // UI Update Strategy
     if (risk === 'high') {
         activateSOS(analysis.summary);
     } else if (risk === 'medium') {
-        devLog("⚠️ Medium risk. Suggesting safe zones...");
-        // Expand map
-        const mapSect = document.getElementById('map-section');
-        mapSect.classList.add('expanded');
-        if (map && typeof google === 'object') {
-            google.maps.event.trigger(map, "resize");
-        }
+        activateAmber(analysis.summary);
     } else {
-        devLog("✅ Safe. Continuing to monitor.");
-        deactivateSOS();
+        deactivateAlerts();
     }
 }
 
-function triggerManualSOS() {
-    devLog("🚨 User tapped Manual SOS!");
-    activateSOS("User manually triggered emergency sequence.");
+function updateStatusText(primary, sub, colorClass) {
+    document.getElementById('status-primary').innerText = primary;
+    document.getElementById('status-subtext').innerText = sub;
+    const dot = document.getElementById('header-status-dot');
+    dot.className = `status-dot ${colorClass}`;
+    
+    if(colorClass === 'green') document.getElementById('status-primary').style.color = 'var(--text-main)';
+    if(colorClass === 'amber') document.getElementById('status-primary').style.color = 'var(--alert-amber)';
+    if(colorClass === 'red') document.getElementById('status-primary').style.color = 'var(--alert-red)';
+
+    if (state.stealthMode) {
+        document.getElementById('status-primary').style.color = 'var(--text-main)';
+    }
+}
+
+function updateActivityLog(show, title, message, isDanger) {
+    const emptyState = document.getElementById('activity-empty-state');
+    const alertCard = document.getElementById('alert-summary');
+    const visualizer = document.getElementById('audio-visualizer');
+
+    if(show) {
+        emptyState.classList.add('hidden');
+        alertCard.classList.remove('hidden');
+        visualizer.classList.remove('hidden');
+        
+        document.getElementById('alert-status-text').innerText = message;
+        
+        if (isDanger && !state.stealthMode) {
+            alertCard.classList.add('danger');
+            visualizer.classList.add('danger');
+        } else {
+            alertCard.classList.remove('danger');
+            visualizer.classList.remove('danger');
+        }
+    } else {
+        emptyState.classList.remove('hidden');
+        alertCard.classList.add('hidden');
+        visualizer.classList.add('hidden');
+    }
+}
+
+function activateAmber(reason) {
+    if(state.riskLevel === 'high') return; // Don't downgrade high risk
+    state.riskLevel = 'medium';
+    devLog("🟡 AMBER ALERT: " + reason);
+    
+    const orb = document.getElementById('safety-orb');
+    orb.className = 'safety-orb state-amber';
+    
+    if (!state.stealthMode) {
+        updateStatusText("Something feels unusual", "Stay aware of surroundings", "amber");
+    }
+    
+    updateActivityLog(true, "Safety Update", reason, false);
 }
 
 function activateSOS(reason) {
-    if(state.isDangerous) return; // Already active
-    state.isDangerous = true;
+    state.riskLevel = 'high';
+    devLog("🔴 RED ALERT: " + reason);
     
-    devLog("🔴 ACTIVATING EMERGENCY PROTOCOL");
-
-    if(!state.silentMode) {
-        // UI Visuals
-        const btn = document.getElementById('sos-btn');
-        btn.classList.add('recording');
-        
-        document.querySelector('.status-dot').className = 'status-dot red';
-        document.getElementById('status-text').innerText = 'DANGER: SOS DISPATCHED';
-        document.getElementById('status-text').style.color = 'var(--accent-red)';
-        
-        document.getElementById('alert-summary').classList.remove('hidden');
-        document.getElementById('alert-status-text').innerText = reason;
-        
-        // Expand Map
-        document.getElementById('map-section').classList.add('expanded');
-        if (map && typeof google === 'object') {
-            setTimeout(() => google.maps.event.trigger(map, "resize"), 300);
-        }
-        
-        // Visualizer
-        document.getElementById('audio-visualizer').classList.remove('hidden');
+    const orb = document.getElementById('safety-orb');
+    orb.className = 'safety-orb state-red';
+    
+    if (!state.stealthMode) {
+        updateStatusText("Danger detected", "Help is on the way", "red");
     } else {
-        devLog("🤫 Silent SOS dispatched (No UI changes)");
+       devLog("🌙 Active SOS in Stealth Mode. Sending alerts silently."); 
     }
+    
+    updateActivityLog(true, "Emergency SOS", "We detected possible danger. Notified Emergency Contacts.", true);
 }
 
-function deactivateSOS() {
-    state.isDangerous = false;
-    const btn = document.getElementById('sos-btn');
-    btn.classList.remove('recording');
-    document.querySelector('.status-dot').className = 'status-dot green';
-    document.getElementById('status-text').innerText = 'Monitoring Active';
-    document.getElementById('status-text').style.color = '';
+function deactivateAlerts() {
+    state.riskLevel = 'low';
+    devLog("🟢 SAFE");
     
-    document.getElementById('alert-summary').classList.add('hidden');
-    document.getElementById('map-section').classList.remove('expanded');
-    if (map && typeof google === 'object') {
-        setTimeout(() => google.maps.event.trigger(map, "resize"), 300);
-    }
-    document.getElementById('audio-visualizer').classList.add('hidden');
+    const orb = document.getElementById('safety-orb');
+    orb.className = 'safety-orb'; // removes state classes
+    
+    updateStatusText("Monitoring quietly", "You're safe", "green");
+    updateActivityLog(false);
 }
