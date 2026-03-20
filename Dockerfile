@@ -1,13 +1,13 @@
-# Use the official Nginx image as a base
-FROM nginx:alpine
+FROM node:20-alpine
 
-# Copy the static website files to the Nginx html directory
-COPY . /usr/share/nginx/html
+WORKDIR /usr/src/app
 
-# Expose port 8080 (Cloud Run expectations, though Cloud Run can detect port automatically)
-# We update the default Nginx port to 8080
-RUN sed -i 's/listen  *80;/listen 8080;/g' /etc/nginx/conf.d/default.conf
+COPY package*.json ./
+RUN npm install --production
+
+COPY . .
+
+# Expose port required by Cloud Run
 EXPOSE 8080
 
-# Start Nginx when the container starts
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["npm", "start"]

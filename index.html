@@ -52,7 +52,7 @@
             <!-- Tab: Home -->
             <main id="tab-home" class="tab-pane active">
                 <div class="orb-wrapper">
-                    <div class="safety-orb" id="safety-orb">
+                    <div class="safety-orb" id="safety-orb" role="button" aria-label="Hold to trigger Emergency SOS distress signal" tabindex="0">
                         <div class="orb-glow"></div>
                         <div class="orb-core"></div>
                     </div>
@@ -60,7 +60,7 @@
                 </div>
 
                 <div class="cta-wrapper">
-                    <button id="stay-protected-btn" class="primary-cta">Stay Protected</button>
+                    <button id="stay-protected-btn" class="primary-cta" aria-label="Open safety action menu">Stay Protected</button>
                 </div>
             </main>
 
@@ -87,15 +87,15 @@
                     <p>Everything looks normal.</p>
                 </div>
 
-                <div id="alert-summary" class="alert-card hidden">
+                <div id="alert-summary" class="alert-card hidden" aria-live="assertive">
                     <div class="alert-header">
                         <div class="alert-icon" id="alert-icon">⚠️</div>
-                        <h4>Safety Update</h4>
+                        <h4>Distress Detection Active</h4>
                     </div>
                     <div class="alert-body">
                         <p id="alert-status-text">We detected possible danger</p>
                         <p class="alert-location" id="alert-location-text">Detecting location...</p>
-                        <p class="alert-action-taken" id="alert-action-text">Notified Emergency Contacts & Local Authorities</p>
+                        <p class="alert-action-taken" id="alert-action-text">Notified Emergency Contacts. Evidence Collected: Audio Snapshot logged.</p>
                     </div>
                 </div>
                 
