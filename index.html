@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SheShield - Real-Time Safety</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Location Requirement Overlay -->
+        <div id="location-overlay" class="overlay">
+            <div class="overlay-content">
+                <h2>📍 Location Required</h2>
+                <p>SheShield needs your live location to function as a safety companion.</p>
+                <p style="font-size: 0.8rem; color: #ff3366;">Waiting for browser permission...</p>
+            </div>
+        </div>
+        <!-- Header -->
+        <header>
+            <div class="logo">🛡️ SheShield</div>
+            <div class="status-indicator">
+                <span class="status-dot green"></span>
+                <span id="status-text">Monitoring Active</span>
+            </div>
+            <!-- Silent mode toggle -->
+            <button id="silent-trigger-btn" class="icon-btn" title="Silent Trigger Mode">🤫</button>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main id="dashboard">
+            <div class="sos-container">
+                <button id="sos-btn" class="sos-button">
+                    <span class="sos-text">SOS</span>
+                </button>
+                <p class="sos-hint">Hold to alert immediately</p>
+            </div>
+
+            <!-- Secret audio visualization (hidden unless triggered) -->
+            <div id="audio-visualizer" class="hidden">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <span>Recording Evidentiary Audio...</span>
+            </div>
+
+            <div id="alert-summary" class="alert-card hidden">
+                <h3>🚨 Alert Summary</h3>
+                <p><strong>Status:</strong> <span id="alert-status-text">Danger Detected</span></p>
+                <p><strong>Location:</strong> <span id="alert-location-text">Detecting...</span></p>
+                <p><strong>Action Taken:</strong> Notified Emergency Contacts & Local Authorities</p>
+            </div>
+        </main>
+
+        <!-- Map View (Always accessible but takes over when alert active or expanding) -->
+        <section id="map-section">
+            <div class="map-header">
+                <h3>Nearby Safe Zones</h3>
+            </div>
+            <div id="map"></div>
+        </section>
+
+        <!-- Developer / Demo Panel -->
+        <div id="demo-panel">
+            <div class="demo-header" id="demo-toggle">
+                🔧 Demo & API Settings <span>▲</span>
+            </div>
+            <div class="demo-content" id="demo-content" style="display: none;">
+                <div class="input-group">
+                    <label>Gemini API Key</label>
+                    <input type="password" id="gemini-api-key" placeholder="Enter API Key" value="AIzaSyCuLN2yfY_TG278tNisMzxQ-epBSNLUQKk">
+                </div>
+                <h4>Simulate Scenarios</h4>
+                <div class="sim-buttons">
+                    <button class="sim-btn" id="sim-safe">🚶‍♀️ Safe (Normal)</button>
+                    <button class="sim-btn" id="sim-suspicious">👣 Suspicious (Following)</button>
+                    <button class="sim-btn" id="sim-danger">⚠️ Danger (Shouting/Panic)</button>
+                </div>
+                <div class="log-output" id="demo-logs"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Custom JS -->
+    <script src="app.js"></script>
+</body>
+
+</html>
