@@ -5,6 +5,7 @@ const fs = require('fs');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
+const xss = require('xss-clean');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Storage } = require('@google-cloud/storage');
 const { Logging } = require('@google-cloud/logging');
@@ -22,7 +23,16 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false
 }));
 app.use(compression()); // Gzip compression
-app.use(cors());
+
+// Data Sanitization against XSS
+app.use(xss());
+
+// Strict Security: Only allow traffic from the deployed Cloud Run origin
+app.use(cors({
+    origin: 'https://sheshield-474085293307.us-central1.run.app',
+    methods: 'GET,POST',
+    optionsSuccessStatus: 200
+}));
 app.use(express.json());
 
 // API Rate Limiting to prevent DDoS

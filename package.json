@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "keywords": [
     "safety",
@@ -20,6 +22,7 @@
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.5",
     "compression": "^1.7.4",
+    "xss-clean": "^0.1.4",
     "@google/generative-ai": "^0.11.0",
     "@google-cloud/storage": "^7.1.0",
     "@google-cloud/logging": "^11.0.0",
@@ -28,6 +31,8 @@
   "devDependencies": {
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
-    "supertest": "^6.3.4"
+    "supertest": "^6.3.4",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.4"
   }
 }

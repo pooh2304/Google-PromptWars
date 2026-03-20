@@ -1,0 +1,16 @@
+{
+  "name": "SheShield Real-Time Safety",
+  "short_name": "SheShield",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FCFBF8",
+  "theme_color": "#A3B18A",
+  "description": "Real-time safety companion with distress detection.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/814/814513.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
