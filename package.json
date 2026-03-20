@@ -1,0 +1,19 @@
+{
+  "name": "sheshield-app",
+  "version": "1.0.0",
+  "description": "SheShield Real-Time Safety Companion",
+  "main": "app.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "safety",
+    "gemini"
+  ],
+  "author": "Google PromptWars",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}

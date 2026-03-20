@@ -18,7 +18,13 @@ function devLog(msg) {
     ETHER_LOGS.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
     if (ETHER_LOGS.length > 20) ETHER_LOGS.shift();
     if(logsEl) {
-        logsEl.innerHTML = ETHER_LOGS.join('<br>');
+        // Use textContent to prevent XSS warnings instead of innerHTML
+        logsEl.innerHTML = '';
+        ETHER_LOGS.forEach(log => {
+            const p = document.createElement('div');
+            p.textContent = log;
+            logsEl.appendChild(p);
+        });
         logsEl.scrollTop = logsEl.scrollHeight;
     }
 }
@@ -53,9 +59,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Simulation Buttons
-    document.getElementById('sim-safe').addEventListener('click', () => simulateScenrio("User is walking home, listening to music. No immediate threats detected.", "low"));
-    document.getElementById('sim-suspicious').addEventListener('click', () => simulateScenrio("Footsteps detected behind the user. User says 'Stop following me!'. Heart rate slightly elevated based on voice.", "medium"));
-    document.getElementById('sim-danger').addEventListener('click', () => simulateScenrio("Loud screaming, sounds of struggle. User shouted 'Help! Someone call the police!'. Phone indicates sudden drop/impact.", "high"));
+    document.getElementById('sim-safe').addEventListener('click', () => simulateScenario("User is walking home, listening to music. No immediate threats detected.", "low"));
+    document.getElementById('sim-suspicious').addEventListener('click', () => simulateScenario("Footsteps detected behind the user. User says 'Stop following me!'. Heart rate slightly elevated based on voice.", "medium"));
+    document.getElementById('sim-danger').addEventListener('click', () => simulateScenario("Loud screaming, sounds of struggle. User shouted 'Help! Someone call the police!'. Phone indicates sudden drop/impact.", "high"));
 
     // Init Map
     initMap();
@@ -68,14 +74,23 @@ let map, userMarker, safeZoneMarkers = [];
 
 function initMap() {
     devLog("Initializing map...");
-    map = L.map('map', { zoomControl: false }).setView([28.6139, 77.2090], 13); // Default New Delhi, India
-
-    // Modern dark theme map tiles
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 20
-    }).addTo(map);
+    const mapElement = document.getElementById('map');
+    
+    // Default to New Delhi if not located yet, initialize Google Map
+    if (typeof google === 'object' && typeof google.maps === 'object') {
+        map = new google.maps.Map(mapElement, {
+            center: { lat: 28.6139, lng: 77.2090 },
+            zoom: 13,
+            disableDefaultUI: true,
+            styles: [
+                { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+                { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+                { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] }
+            ]
+        });
+    } else {
+        devLog("⚠️ Google Maps API not loaded. Check network or API key.");
+    }
 
     // Get real location if possible
     if ("geolocation" in navigator) {
@@ -83,79 +98,80 @@ function initMap() {
             (pos) => {
                 const overlay = document.getElementById('location-overlay');
                 if(overlay) overlay.style.display = 'none';
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
-                updateUserLocation(lat, lng);
+                updateUserLocation(pos.coords.latitude, pos.coords.longitude);
             },
             (err) => {
                 devLog("Geo error: " + err.message + " - Location rejected");
                 const overlay = document.getElementById('location-overlay');
                 if(overlay) {
-                    overlay.innerHTML = `<div class="overlay-content"><h2>❌ Location Denied</h2><p>SheShield cannot function without location access. Please enable location permissions in your browser settings and refresh.</p></div>`;
+                    overlay.textContent = "❌ Location Denied. SheShield cannot function without location access.";
+                    overlay.style.backgroundColor = "white";
+                    overlay.style.color = "black";
+                    overlay.style.padding = "20px";
                 }
             }
         );
     } else {
         const overlay = document.getElementById('location-overlay');
         if(overlay) {
-            overlay.innerHTML = `<div class="overlay-content"><h2>❌ No Geolocation</h2><p>Your browser does not support geolocation. SheShield cannot function.</p></div>`;
+            overlay.textContent = "❌ No Geolocation support.";
         }
     }
 }
 
 function updateUserLocation(lat, lng) {
     state.userLocation = {lat, lng};
-    map.flyTo([lat, lng], 15);
+    const currentLoc = { lat, lng };
     
-    // Custom marker
-    const userIcon = L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div style='background-color:#2979ff; width:15px; height:15px; border-radius:50%; box-shadow: 0 0 10px #2979ff; border: 2px solid white;'></div>`,
-        iconSize: [15, 15],
-        iconAnchor: [7, 7]
-    });
-
-    if(!userMarker) {
-        userMarker = L.marker([lat, lng], {icon: userIcon}).addTo(map);
-    } else {
-        userMarker.setLatLng([lat, lng]);
+    if (map && typeof google === 'object') {
+        map.panTo(currentLoc);
+        map.setZoom(15);
+        
+        if(!userMarker) {
+            userMarker = new google.maps.Marker({
+                position: currentLoc,
+                map: map,
+                title: "Your Location",
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: "#2979ff",
+                    fillOpacity: 1,
+                    strokeColor: "white",
+                    strokeWeight: 2
+                }
+            });
+        } else {
+            userMarker.setPosition(currentLoc);
+        }
+        generateSafeZones(lat, lng);
     }
     
     document.getElementById('alert-location-text').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    
-    // Add fake safe zones around
-    generateSafeZones(lat, lng);
 }
 
 function generateSafeZones(lat, lng) {
     // Clear old
-    safeZoneMarkers.forEach(m => map.removeLayer(m));
+    safeZoneMarkers.forEach(m => {
+        if (m.setMap) m.setMap(null);
+    });
     safeZoneMarkers = [];
 
-    const safeIcon = L.divIcon({
-        className: 'safe-div-icon',
-        html: `<div style='font-size: 20px;'>🏥</div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
-    });
-
-    const policeIcon = L.divIcon({
-        className: 'safe-div-icon',
-        html: `<div style='font-size: 20px;'>🚓</div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
-    });
+    if (!map || typeof google !== 'object') return;
 
     // Create a few random offsets
     const points = [
-        { lat: lat + 0.005, lng: lng + 0.005, title: 'Central Hospital', icon: safeIcon },
-        { lat: lat - 0.003, lng: lng - 0.007, title: 'Police Precinct 42', icon: policeIcon },
-        { lat: lat - 0.008, lng: lng + 0.002, title: '24/7 Pharmacy', icon: safeIcon }
+        { lat: lat + 0.005, lng: lng + 0.005, title: 'Central Hospital: 🏥' },
+        { lat: lat - 0.003, lng: lng - 0.007, title: 'Police Precinct 42: 🚓' },
+        { lat: lat - 0.008, lng: lng + 0.002, title: '24/7 Pharmacy: 🏥' }
     ];
 
     points.forEach(p => {
-        let m = L.marker([p.lat, p.lng], {icon: p.icon}).addTo(map);
-        m.bindPopup(p.title);
+        let m = new google.maps.Marker({
+            position: { lat: p.lat, lng: p.lng },
+            map: map,
+            title: p.title
+        });
         safeZoneMarkers.push(m);
     });
 }
@@ -231,7 +247,7 @@ async function analyzeContextWithGemini(contextString) {
 // ACTION TRIGGERS
 // ==========================================
 
-async function simulateScenrio(context, expectedFallback) {
+async function simulateScenario(context, expectedFallback) {
     devLog(`--- Simulating Scenario: ${expectedFallback.toUpperCase()} ---`);
     const result = await analyzeContextWithGemini(context);
     devLog(`AI Output: Risk=${result.risk_level}, Conf=${result.confidence}`);
@@ -248,8 +264,11 @@ function handleAIReaction(analysis) {
     } else if (risk === 'medium') {
         devLog("⚠️ Medium risk. Suggesting safe zones...");
         // Expand map
-        document.getElementById('map-section').classList.add('expanded');
-        map.invalidateSize();
+        const mapSect = document.getElementById('map-section');
+        mapSect.classList.add('expanded');
+        if (map && typeof google === 'object') {
+            google.maps.event.trigger(map, "resize");
+        }
     } else {
         devLog("✅ Safe. Continuing to monitor.");
         deactivateSOS();
@@ -281,7 +300,9 @@ function activateSOS(reason) {
         
         // Expand Map
         document.getElementById('map-section').classList.add('expanded');
-        setTimeout(()=>map.invalidateSize(), 300);
+        if (map && typeof google === 'object') {
+            setTimeout(() => google.maps.event.trigger(map, "resize"), 300);
+        }
         
         // Visualizer
         document.getElementById('audio-visualizer').classList.remove('hidden');
@@ -300,6 +321,8 @@ function deactivateSOS() {
     
     document.getElementById('alert-summary').classList.add('hidden');
     document.getElementById('map-section').classList.remove('expanded');
-    setTimeout(()=>map.invalidateSize(), 300);
+    if (map && typeof google === 'object') {
+        setTimeout(() => google.maps.event.trigger(map, "resize"), 300);
+    }
     document.getElementById('audio-visualizer').classList.add('hidden');
 }

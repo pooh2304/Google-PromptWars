@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://generativelanguage.googleapis.com https://*.basemaps.cartocdn.com; img-src 'self' data: https://unpkg.com https://*.basemaps.cartocdn.com;">
     <title>SheShield - Real-Time Safety</title>
 
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Google Maps API (Replaced Leaflet for Google Services integration) -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_MAPS_API_KEY&libraries=places" defer></script>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -35,13 +35,13 @@
                 <span id="status-text">Monitoring Active</span>
             </div>
             <!-- Silent mode toggle -->
-            <button id="silent-trigger-btn" class="icon-btn" title="Silent Trigger Mode">🤫</button>
+            <button id="silent-trigger-btn" class="icon-btn" title="Silent Trigger Mode" aria-label="Toggle Silent Trigger Mode">🤫</button>
         </header>
 
         <!-- Main Dashboard -->
         <main id="dashboard">
             <div class="sos-container">
-                <button id="sos-btn" class="sos-button">
+                <button id="sos-btn" class="sos-button" aria-label="Trigger SOS distress signal">
                     <span class="sos-text">SOS</span>
                 </button>
                 <p class="sos-hint">Hold to alert immediately</p>
@@ -78,8 +78,8 @@
             </div>
             <div class="demo-content" id="demo-content" style="display: none;">
                 <div class="input-group">
-                    <label>Gemini API Key</label>
-                    <input type="password" id="gemini-api-key" placeholder="Enter API Key" value="AIzaSyCuLN2yfY_TG278tNisMzxQ-epBSNLUQKk">
+                    <label for="gemini-api-key">Gemini API Key</label>
+                    <input type="password" id="gemini-api-key" name="gemini-api-key" placeholder="Enter API Key" aria-required="true" value="">
                 </div>
                 <h4>Simulate Scenarios</h4>
                 <div class="sim-buttons">
@@ -92,11 +92,8 @@
         </div>
     </div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Custom JS -->
-    <script src="app.js"></script>
+    <script src="app.js" defer></script>
 </body>
 
 </html>
